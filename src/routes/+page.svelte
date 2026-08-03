@@ -187,6 +187,15 @@
 	}
 </script>
 
+<svelte:head>
+	<title>@nomideusz/svelte-scheduler — booking &amp; scheduling for Svelte 5</title>
+	<meta
+		name="description"
+		content="Booking and scheduling logic for Svelte 5 — offerings, slots, availability, holds, pricing and cancellation policies, with headless components over a pluggable adapter."
+	/>
+</svelte:head>
+
+
 <div class="demo-root">
 	<h1>@nomideusz/svelte-scheduler — Component Demo</h1>
 

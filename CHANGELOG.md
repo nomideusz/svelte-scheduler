@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — 2026-08-03
+
+### Added
+- Demo site at https://svelte-scheduler.vercel.app/ — AvailabilityPicker,
+  BookingFlow, CancelFlow and GroupManifest. `homepage` now points at it.
+
 ## 0.3.1 — 2026-08-03
 
 ### Changed

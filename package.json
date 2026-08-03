@@ -1,6 +1,6 @@
 {
   "name": "@nomideusz/svelte-scheduler",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Booking and scheduling logic library for Svelte 5 — tour slots, pricing, cancellation policies.",
   "type": "module",
   "sideEffects": false,
@@ -60,5 +60,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/nomideusz/svelte-scheduler"
-  }
+  },
+  "homepage": "https://svelte-scheduler.vercel.app/"
 }
