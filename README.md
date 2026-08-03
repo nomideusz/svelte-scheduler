@@ -1,5 +1,7 @@
 # @nomideusz/svelte-scheduler
 
+[![npm](https://badgen.net/npm/v/@nomideusz/svelte-scheduler)](https://www.npmjs.com/package/@nomideusz/svelte-scheduler) [![license](https://badgen.net/badge/license/MIT/blue)](./LICENSE)
+
 Booking domain engine for Svelte 5 — offerings, recurring schedules, lazy slots, capacity holds, pricing, cancellation policies, tickets and attendance. The layer between "here is a bookable service" and "a paid guest with a QR ticket walked in".
 
 Service-neutral by design: tours, yoga classes, salon appointments, workshops — anything with a schedule, capacity and a price.
