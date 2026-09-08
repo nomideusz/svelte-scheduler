@@ -37,8 +37,19 @@ export type SlotStatus =
 	| 'completed';
 
 /** Payment processing states. */
+/**
+ * How much of a BOOKING's price has been settled — not the state of any one
+ * charge. `partially_refunded` was already a state no payment provider has,
+ * and `deposit_paid` sits beside it: the guest paid the deposit that was
+ * asked for (to the PSP, a complete 'paid' payment of a smaller amount) and
+ * the balance is still owed, typically collected on the day.
+ *
+ * The per-charge vocabulary lives in @nomideusz/svelte-payments' own
+ * PaymentStatus and deliberately does not have these.
+ */
 export type PaymentStatus =
 	| 'pending'
+	| 'deposit_paid'
 	| 'paid'
 	| 'failed'
 	| 'refunded'
@@ -181,8 +192,25 @@ export interface Booking {
 	id: string;
 	/** Reference to the Offering. */
 	offeringId: string;
-	/** Reference to the specific Slot. */
+	/**
+	 * Reference to the specific Slot. For a series booking this is the ANCHOR —
+	 * the first session — and stays populated so every existing consumer keeps
+	 * working unchanged.
+	 */
 	slotId: string;
+	/**
+	 * Every slot this booking occupies, for a course/series sold as one ticket
+	 * ("kurs jogi, 8 wtorków"): one purchase, one seat, N sessions. Absent on
+	 * an ordinary single-session booking, which is the overwhelming majority —
+	 * read it as `slotIds ?? [slotId]`.
+	 *
+	 * Capacity needs nothing special from the core because it is derived:
+	 * recountSlotCapacity() sums adapter.getBookingsForSlot(). An adapter that
+	 * supports series MUST therefore return a series booking from
+	 * getBookingsForSlot for EVERY slot in slotIds, not just the anchor —
+	 * otherwise sessions 2..N read as empty and can be overbooked.
+	 */
+	slotIds?: string[];
 	/** Guest information. */
 	guest: GuestProfile;
 	/** Total number of participants. */

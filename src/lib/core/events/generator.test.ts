@@ -309,3 +309,74 @@ describe('generateSlots — multiple rules', () => {
 		expect(result).toHaveLength(2);
 	});
 });
+
+// ─── Invariant: same rule + same start = one map key ────────────────
+//
+// slotKey() is `${scheduleRuleId}:${startTime}` and persistedByKey is a Map,
+// so two persisted rule slots at the same time share one entry. That happens
+// for real: moving a rule occurrence leaves a 'cancelled' suppression at the
+// old time, and moving back onto it collides. The winner must not depend on
+// the order rows come out of the database.
+describe('generateSlots — colliding persisted rule slots', () => {
+	const at = new Date('2024-03-11T09:00:00.000Z');
+	const open = () =>
+		makePersistedSlot({ id: 'open-1', startTime: at, ruleId: 'rule-mon' });
+	const suppression = () =>
+		makePersistedSlot({
+			id: 'suppression-1',
+			startTime: at,
+			ruleId: 'rule-mon',
+			status: 'cancelled',
+		});
+	const week = () => range('2024-03-11T00:00:00Z', '2024-03-18T00:00:00Z');
+
+	it('keeps the live class when the cancelled row is indexed last', () => {
+		const result = generateSlots(makeTour([WEEKLY_RULE]), [open(), suppression()], week());
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe('open-1');
+	});
+
+	it('keeps the live class when the cancelled row is indexed first', () => {
+		const result = generateSlots(makeTour([WEEKLY_RULE]), [suppression(), open()], week());
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe('open-1');
+	});
+
+	it('still suppresses when the cancelled row stands alone', () => {
+		const result = generateSlots(makeTour([WEEKLY_RULE]), [suppression()], week());
+		expect(result).toHaveLength(0);
+	});
+});
+
+// ─── A hand-moved rule slot is not a ghost ──────────────────────────
+//
+// Moving one occurrence off its rule time leaves a persisted row that no rule
+// expansion matches. Dropping it as an orphan made the class disappear from
+// the grid while still sitting in the database. isGenerated tells the two
+// apart: the rule's own disposable materializations keep it true, a row the
+// owner has moved is marked false.
+describe('generateSlots — hand-edited rule slots survive', () => {
+	const week = () => range('2024-03-11T00:00:00Z', '2024-03-18T00:00:00Z');
+	const offRuleTime = new Date('2024-03-12T15:30:00.000Z'); // Tuesday, rule is Monday
+
+	it('drops an unbooked auto-generated slot the rule no longer produces', () => {
+		const ghost = makePersistedSlot({
+			id: 'ghost-1',
+			startTime: offRuleTime,
+			ruleId: 'rule-mon',
+			isGenerated: true,
+		});
+		expect(generateSlots(makeTour([WEEKLY_RULE]), [ghost], week())).toHaveLength(1);
+	});
+
+	it('keeps an unbooked slot the owner moved off the rule time', () => {
+		const moved = makePersistedSlot({
+			id: 'moved-1',
+			startTime: offRuleTime,
+			ruleId: 'rule-mon',
+			isGenerated: false,
+		});
+		const result = generateSlots(makeTour([WEEKLY_RULE]), [moved], week());
+		expect(result.map((s) => s.id)).toContain('moved-1');
+	});
+});

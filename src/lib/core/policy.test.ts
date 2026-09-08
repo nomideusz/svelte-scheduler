@@ -14,6 +14,16 @@ function hoursFromNow(hours: number): Date {
 	return new Date(Date.now() + hours * 60 * 60 * 1000);
 }
 
+// Boundary cases ("exactly Nh before") must read the clock ONCE. Letting
+// getApplicableRule default `cancellationTime` to its own `new Date()` puts a
+// few microseconds between the two readings, so "exactly 168h" arrives as
+// 167.9999h and falls through to the next rule — a race that fails a run at
+// random.
+function exactlyHoursBefore(hours: number): { tourStart: Date; now: Date } {
+	const now = new Date();
+	return { tourStart: new Date(now.getTime() + hours * 60 * 60 * 1000), now };
+}
+
 // ─── CANCELLATION_POLICIES ──────────────────────────────
 
 describe('CANCELLATION_POLICIES', () => {
@@ -62,8 +72,8 @@ describe('getApplicableRule', () => {
 	});
 
 	it('flexible — returns 100% rule when cancelling exactly 24h before offering', () => {
-		const tourStart = hoursFromNow(24);
-		const rule = getApplicableRule(flexible, tourStart);
+		const { tourStart, now } = exactlyHoursBefore(24);
+		const rule = getApplicableRule(flexible, tourStart, now);
 		expect(rule.refundPercentage).toBe(100);
 	});
 
@@ -88,8 +98,8 @@ describe('getApplicableRule', () => {
 	});
 
 	it('moderate — returns 100% rule when cancelling exactly 48h before offering', () => {
-		const tourStart = hoursFromNow(48);
-		const rule = getApplicableRule(moderate, tourStart);
+		const { tourStart, now } = exactlyHoursBefore(48);
+		const rule = getApplicableRule(moderate, tourStart, now);
 		expect(rule.refundPercentage).toBe(100);
 	});
 
@@ -100,8 +110,8 @@ describe('getApplicableRule', () => {
 	});
 
 	it('moderate — returns 50% rule when cancelling exactly 24h before offering', () => {
-		const tourStart = hoursFromNow(24);
-		const rule = getApplicableRule(moderate, tourStart);
+		const { tourStart, now } = exactlyHoursBefore(24);
+		const rule = getApplicableRule(moderate, tourStart, now);
 		expect(rule.refundPercentage).toBe(50);
 	});
 
@@ -120,8 +130,8 @@ describe('getApplicableRule', () => {
 	});
 
 	it('strict — returns 100% rule when cancelling exactly 168h before offering', () => {
-		const tourStart = hoursFromNow(168);
-		const rule = getApplicableRule(strict, tourStart);
+		const { tourStart, now } = exactlyHoursBefore(168);
+		const rule = getApplicableRule(strict, tourStart, now);
 		expect(rule.refundPercentage).toBe(100);
 	});
 

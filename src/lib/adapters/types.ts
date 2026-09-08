@@ -53,7 +53,19 @@ export interface SchedulerAdapter {
 
 	// ─── Booking lifecycle ──────────────────────────────
 
-	/** Fetch bookings for a specific slot. */
+	/**
+	 * Fetch bookings for a specific slot.
+	 *
+	 * **Series obligation.** Capacity in this package is derived, not stored:
+	 * recountSlotCapacity() sums what this method returns. So an adapter that
+	 * supports series bookings (Booking.slotIds) MUST return such a booking for
+	 * EVERY slot in its slotIds, not only for its anchor slotId. Return the
+	 * anchor alone and sessions 2..N of a course read as empty — the room is
+	 * held by a paying guest and the desk will sell the seat twice.
+	 *
+	 * Adapters with no series support are unaffected: without slotIds, anchor
+	 * and membership are the same thing.
+	 */
 	getBookingsForSlot(slotId: string): Promise<Booking[]>;
 
 	/** Fetch bookings for a specific offering across all slots. */
@@ -79,6 +91,17 @@ export interface SchedulerAdapter {
 	 * Update guest attendance (check-in desk). Optional — adapters that
 	 * don't support attendance simply omit it; core/attendance throws
 	 * ATTENDANCE_UNSUPPORTED when it's missing.
+	 *
+	 * `slotId` names ONE session of a series booking: a kurs is checked in
+	 * eight times, once per Tuesday, and each answer is its own fact. Omitted
+	 * (and for every single-session booking) it sets the booking-level status,
+	 * which is the only one that exists there. An adapter that stores
+	 * per-session attendance decides for itself whether the booking-level
+	 * status is also a summary; the core never infers one from the other.
 	 */
-	updateAttendance?(id: string, attendanceStatus: AttendanceStatus): Promise<Booking>;
+	updateAttendance?(
+		id: string,
+		attendanceStatus: AttendanceStatus,
+		slotId?: string,
+	): Promise<Booking>;
 }

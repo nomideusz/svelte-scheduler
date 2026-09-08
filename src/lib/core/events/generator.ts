@@ -35,6 +35,13 @@ export function generateSlots(
 	const persistedByKey = new Map<string, Slot>();
 	for (const slot of existingSlots) {
 		const key = slotKey(slot);
+		// Two persisted rows CAN share a rule + start time: moving a rule
+		// occurrence leaves a 'cancelled' suppression behind at the old time, and
+		// moving something back onto it collides. Plain last-wins made the winner
+		// depend on row order and could drop a live class from the grid entirely.
+		// A suppression never outranks a real slot.
+		const prev = persistedByKey.get(key);
+		if (prev && prev.status !== 'cancelled' && slot.status === 'cancelled') continue;
 		persistedByKey.set(key, slot);
 	}
 
@@ -73,17 +80,22 @@ export function generateSlots(
 	}
 
 	// Add remaining persisted slots that are within the range but did not match
-	// any rule expansion. Two sub-cases:
+	// any rule expansion. Three sub-cases:
 	//   1. Manual slots (no scheduleRuleId) — always include.
 	//   2. Rule-generated slots whose rule/time no longer produces this slot
 	//      (e.g. rule was edited). These are orphaned "ghost" slots — drop them
 	//      UNLESS they have bookings, in which case the booked slot must still
 	//      surface so the booking remains resolvable.
+	//   3. Slots that CAME from a rule but were since edited by hand — moved to
+	//      another time, say. They keep scheduleRuleId (the rule still owns the
+	//      suppression at the old time) but carry isGenerated: false to mark
+	//      them owner-authored. Dropping those as ghosts made a moved class
+	//      vanish from the grid while still sitting in the database.
 	for (const slot of persistedByKey.values()) {
 		if (slot.status === 'cancelled') continue;
 		if (slot.startTime < range.start || slot.startTime >= range.end) continue;
 
-		const isOrphanedRuleSlot = Boolean(slot.scheduleRuleId);
+		const isOrphanedRuleSlot = Boolean(slot.scheduleRuleId) && slot.isGenerated;
 		if (isOrphanedRuleSlot && slot.bookedSpots === 0) {
 			// Ghost: rule edited, no bookings — skip.
 			continue;

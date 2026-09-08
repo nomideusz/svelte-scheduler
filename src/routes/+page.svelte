@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { createMemoryAdapter } from '$lib/adapters/memory.js';
-	import BookingFlow from '$lib/components/BookingFlow.svelte';
-	import CancelFlow from '$lib/components/CancelFlow.svelte';
-	import AvailabilityPicker from '$lib/components/AvailabilityPicker.svelte';
-	import GroupManifest from '$lib/components/GroupManifest.svelte';
-	import type { Booking, Slot } from '$lib/core/types.js';
+	import { createMemoryAdapter } from '#lib/adapters/memory.js';
+	import BookingFlow from '#lib/components/BookingFlow.svelte';
+	import CancelFlow from '#lib/components/CancelFlow.svelte';
+	import AvailabilityPicker from '#lib/components/AvailabilityPicker.svelte';
+	import GroupManifest from '#lib/components/GroupManifest.svelte';
+	import type { Booking, Slot } from '#lib/core/types.js';
 
 	// ─── Seed data ────────────────────────────────────────
 

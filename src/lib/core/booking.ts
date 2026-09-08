@@ -8,7 +8,7 @@
  */
 
 import type { SchedulerAdapter } from '../adapters/types.js';
-import type { Booking, GuestProfile } from './types.js';
+import type { Booking, GuestProfile, Slot } from './types.js';
 import { calculatePrice } from './pricing/index.js';
 import { calculateRefund } from './policy.js';
 import { holdExpiry, isExpiredHold, occupyingBookings, recountSlotCapacity } from './holds.js';
@@ -47,7 +47,13 @@ export class BookingError extends Error {
  */
 export async function createBooking(
 	adapter: SchedulerAdapter,
-	slotId: string,
+	/**
+	 * One slot, or every session of a series sold as a single ticket. An array
+	 * reserves all-or-nothing: each slot must be open with room, and the first
+	 * one that is not aborts the whole booking. Its first entry becomes the
+	 * anchor `slotId`.
+	 */
+	slotId: string | string[],
 	guest: GuestProfile,
 	participants: number,
 	options?: {
@@ -62,36 +68,61 @@ export async function createBooking(
 		holdMinutes?: number;
 	},
 ): Promise<Booking> {
-	// Step 1: load slot
-	const slot = await adapter.getSlotById(slotId);
-	if (!slot) {
-		throw new BookingError(`Slot not found: ${slotId}`, 'SLOT_NOT_FOUND');
+	// A series is validated as a whole before anything is written: a course
+	// with one full session is not bookable at all, and half-reserving it
+	// would leave a guest paying for sessions they cannot attend.
+	const slotIds = Array.isArray(slotId) ? [...new Set(slotId)] : [slotId];
+	if (slotIds.length === 0) {
+		throw new BookingError('No slot given', 'SLOT_NOT_FOUND');
 	}
+	const anchorId = slotIds[0];
 
-	// Step 2: load offering
+	// Step 1: load slots
+	const slots: Slot[] = [];
+	for (const id of slotIds) {
+		const s = await adapter.getSlotById(id);
+		if (!s) {
+			throw new BookingError(`Slot not found: ${id}`, 'SLOT_NOT_FOUND');
+		}
+		slots.push(s);
+	}
+	const slot = slots[0];
+
+	// Step 2: load offering. Every session of a series belongs to the same
+	// offering — the course IS the offering, its slots are its sessions.
 	const offering = await adapter.getOfferingById(slot.offeringId);
 	if (!offering) {
 		throw new BookingError(`Offering not found: ${slot.offeringId}`, 'TOUR_NOT_FOUND');
 	}
-
-	// Step 3: slot must be open
-	if (slot.status !== 'open') {
+	const foreign = slots.find((s) => s.offeringId !== slot.offeringId);
+	if (foreign) {
 		throw new BookingError(
-			`Slot is not open for booking (status: ${slot.status})`,
+			`Slot ${foreign.id} belongs to a different offering — a series is one offering's sessions`,
+			'SLOT_NOT_FOUND',
+		);
+	}
+
+	// Step 3: every slot must be open
+	const shut = slots.find((s) => s.status !== 'open');
+	if (shut) {
+		throw new BookingError(
+			`Slot is not open for booking (status: ${shut.status})`,
 			'SLOT_NOT_OPEN',
 		);
 	}
 
-	// Step 4: validate participants
+	// Step 4: validate participants against EVERY session
 	if (participants <= 0) {
 		throw new BookingError('Participants must be greater than 0', 'INVALID_PARTICIPANTS');
 	}
-	const remaining = slot.availableSpots - slot.bookedSpots;
-	if (participants > remaining) {
-		throw new BookingError(
-			`Not enough capacity: ${remaining} spot(s) available, ${participants} requested`,
-			'OVER_CAPACITY',
-		);
+	for (const s of slots) {
+		const remaining = s.availableSpots - s.bookedSpots;
+		if (participants > remaining) {
+			throw new BookingError(
+				`Not enough capacity: ${remaining} spot(s) available, ${participants} requested`,
+				'OVER_CAPACITY',
+			);
+		}
 	}
 
 	// Step 5: calculate price
@@ -105,7 +136,10 @@ export async function createBooking(
 	// Step 6: persist booking
 	const booking = await adapter.createBooking({
 		offeringId: offering.id,
-		slotId,
+		slotId: anchorId,
+		// Only on a real series, so a single-session booking's stored shape is
+		// byte-for-byte what it was before this existed.
+		...(slotIds.length > 1 ? { slotIds } : {}),
 		guest,
 		participants,
 		...(options?.participantsByCategory !== undefined
@@ -233,7 +267,16 @@ export async function cancelBooking(
 	// Step 6: release capacity. Adapters' updateBookingStatus doesn't touch
 	// bookedSpots; recount from the bookings that still occupy seats
 	// (confirmed + live pending holds) and reopen the slot if seats came free.
+	//
+	// EVERY session of a series, not just the anchor: cancelling a course that
+	// held a seat in eight Tuesdays must give back all eight, or the room stays
+	// falsely full for the rest of the term.
 	await recountSlotCapacity(adapter, slot);
+	for (const id of booking.slotIds ?? []) {
+		if (id === slot.id) continue;
+		const s = await adapter.getSlotById(id);
+		if (s) await recountSlotCapacity(adapter, s);
+	}
 
 	return { booking: updatedBooking, refundAmount };
 }

@@ -132,7 +132,12 @@ export function createMemoryAdapter(seed?: MemoryAdapterSeed): SchedulerAdapter 
 	// ─── Booking lifecycle ───────────────────────────────
 
 	async function getBookingsForSlot(slotId: string): Promise<Booking[]> {
-		return Array.from(bookings.values()).filter((b) => b.slotId === slotId);
+		// Membership, not anchor — see the series obligation on SchedulerAdapter.
+		// Capacity is derived from this call, so a series booking has to answer
+		// for every session it holds or sessions 2..N read as empty.
+		return Array.from(bookings.values()).filter((b) =>
+			b.slotIds ? b.slotIds.includes(slotId) : b.slotId === slotId,
+		);
 	}
 
 	async function getBookingsForOffering(offeringId: string, range?: DateRange): Promise<Booking[]> {
@@ -198,9 +203,17 @@ export function createMemoryAdapter(seed?: MemoryAdapterSeed): SchedulerAdapter 
 		return updated;
 	}
 
-	async function updateAttendance(id: string, attendanceStatus: AttendanceStatus): Promise<Booking> {
+	async function updateAttendance(
+		id: string,
+		attendanceStatus: AttendanceStatus,
+		slotId?: string,
+	): Promise<Booking> {
 		const existing = bookings.get(id);
 		if (!existing) throw new Error(`Booking not found: ${id}`);
+		// This adapter keeps no per-session table, so a per-session check-in
+		// lands on the booking. Honest for a reference/in-memory adapter; a real
+		// one (yoga's) stores a row per session. The core validates that slotId
+		// belongs to the booking before we ever get here.
 		const updated: Booking = { ...existing, attendanceStatus };
 		bookings.set(id, updated);
 		return updated;

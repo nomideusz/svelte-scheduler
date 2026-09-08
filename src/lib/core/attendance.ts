@@ -23,6 +23,7 @@ async function setAttendance(
 	adapter: SchedulerAdapter,
 	bookingId: string,
 	attendanceStatus: AttendanceStatus,
+	slotId?: string,
 ): Promise<Booking> {
 	if (!adapter.updateAttendance) {
 		throw new AttendanceError('Adapter does not support attendance', 'ATTENDANCE_UNSUPPORTED');
@@ -37,14 +38,27 @@ async function setAttendance(
 			'NOT_ATTENDABLE',
 		);
 	}
-	return adapter.updateAttendance(bookingId, attendanceStatus);
+	// A series booking is checked in per session; `slotId` says which one. It
+	// must be a session of THIS booking — checking someone into a class they
+	// never bought is the kind of thing a desk does by mistyping.
+	if (slotId) {
+		const sessions = booking.slotIds ?? [booking.slotId];
+		if (!sessions.includes(slotId)) {
+			throw new AttendanceError(
+				`Slot ${slotId} is not a session of booking ${bookingId}`,
+				'NOT_ATTENDABLE',
+			);
+		}
+	}
+	return adapter.updateAttendance(bookingId, attendanceStatus, slotId);
 }
 
-export const checkIn = (adapter: SchedulerAdapter, bookingId: string) =>
-	setAttendance(adapter, bookingId, 'checked_in');
+/** `slotId` checks in ONE session of a series; omit it for a single class. */
+export const checkIn = (adapter: SchedulerAdapter, bookingId: string, slotId?: string) =>
+	setAttendance(adapter, bookingId, 'checked_in', slotId);
 
-export const markNoShow = (adapter: SchedulerAdapter, bookingId: string) =>
-	setAttendance(adapter, bookingId, 'no_show');
+export const markNoShow = (adapter: SchedulerAdapter, bookingId: string, slotId?: string) =>
+	setAttendance(adapter, bookingId, 'no_show', slotId);
 
-export const resetAttendance = (adapter: SchedulerAdapter, bookingId: string) =>
-	setAttendance(adapter, bookingId, 'not_arrived');
+export const resetAttendance = (adapter: SchedulerAdapter, bookingId: string, slotId?: string) =>
+	setAttendance(adapter, bookingId, 'not_arrived', slotId);
