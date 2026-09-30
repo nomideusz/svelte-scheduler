@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.3
+
+### Patch Changes
+
+- e02cb59: Peer range for `@nomideusz/svelte-calendar` widened to `>=0.15.1 <2.0.0`. The
+  published `^0.15.1` stopped at 0.15.x (0.x carets don't cross minors), so every
+  calendar from 0.16 on — and 1.0 — was reported as an unmet peer. Scheduler
+  uses only the calendar's types (`TimelineEvent`, `EventStatus`,
+  `CalendarAdapter`, `DateRange`), which 1.0 keeps unchanged.
+- Updated dependencies [0a64748]
+- Updated dependencies [733418d]
+  - @nomideusz/svelte-calendar@1.0.0
+
 ## 0.4.2
 
 ### Patch Changes

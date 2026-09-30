@@ -4,5 +4,3 @@ packages:
   - '.'
 allowBuilds:
   esbuild: true
-minimumReleaseAgeExclude:
-  - '@nomideusz/svelte-calendar@0.15.2'

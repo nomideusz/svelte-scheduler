@@ -1,6 +1,6 @@
 {
   "name": "@nomideusz/svelte-scheduler",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Booking and scheduling logic library for Svelte 5 — tour slots, pricing, cancellation policies.",
   "type": "module",
   "sideEffects": false,
@@ -37,20 +37,20 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@nomideusz/svelte-calendar": "^0.15.1",
+    "@nomideusz/svelte-calendar": ">=0.15.1 <2.0.0",
     "svelte": "^5.0.0"
   },
   "devDependencies": {
-    "@nomideusz/svelte-calendar": "^0.15.2",
-    "@sveltejs/adapter-auto": "8.0.0-next.3",
-    "@sveltejs/adapter-vercel": "7.0.0-next.6",
-    "@sveltejs/kit": "3.0.0-next.23",
+    "@nomideusz/svelte-calendar": "^1.0.0",
+    "@sveltejs/adapter-auto": "8.0.0-next.4",
+    "@sveltejs/adapter-vercel": "7.0.0-next.9",
+    "@sveltejs/kit": "3.0.0-next.27",
     "@sveltejs/package": "3.0.0-next.7",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
-    "svelte": "^5.56.9",
+    "svelte": "^5.57.0",
     "svelte-check": "^4.7.1",
     "typescript": "^6.0.3",
-    "vite": "^8.2.1",
+    "vite": "^8.3.0",
     "vitest": "^4.1.10"
   },
   "keywords": [
