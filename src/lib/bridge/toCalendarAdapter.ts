@@ -20,11 +20,13 @@ import { toTimelineEvent } from './toTimelineEvent.js';
  * 3. Fill in lazily-generated slots via `generateSlots(offering, existingSlots, range)`.
  * 4. Map each slot to a `TimelineEvent` via `toTimelineEvent(slot, offering)`.
  *
- * Returns an empty array if the offering is not found.
+ * Returns an empty array if the offering is not found. Cancelled slots are
+ * left out unless `opts.includeCancelled`.
  */
 export function toCalendarAdapter(
 	adapter: SchedulerAdapter,
 	offeringId: string,
+	opts: { includeCancelled?: boolean } = {},
 ): CalendarAdapter {
 	return {
 		async fetchEvents(range: DateRange): Promise<TimelineEvent[]> {
@@ -32,7 +34,7 @@ export function toCalendarAdapter(
 			if (!offering) return [];
 
 			const existingSlots = await adapter.getSlots(offeringId, range);
-			const slots = generateSlots(offering, existingSlots, range);
+			const slots = generateSlots(offering, existingSlots, range, opts);
 
 			return slots.map((slot) => toTimelineEvent(slot, offering));
 		},

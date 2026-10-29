@@ -176,6 +176,12 @@ describe('toCalendarAdapter — cancelled slots excluded', () => {
 
 		// Cancelled slot should be excluded
 		expect(events).toHaveLength(0);
+
+		// …unless an editor asks for it, to strike it through.
+		const shown = await toCalendarAdapter(schedulerAdapter, offering.id, { includeCancelled: true }).fetchEvents(
+			range('2024-03-11T00:00:00Z', '2024-03-18T00:00:00Z'),
+		);
+		expect(shown.map((e) => e.status)).toEqual(['cancelled']);
 	});
 });
 

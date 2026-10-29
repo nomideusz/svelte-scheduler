@@ -19,7 +19,8 @@ type DateRange = { start: Date; end: Date };
  *
  * 1. Expand all offering.scheduleRules into { startTime, endTime } pairs.
  * 2. Merge with existingSlots (persisted exceptions: cancellations, manual overrides).
- * 3. Exclude cancelled slots.
+ * 3. Exclude cancelled slots — unless `opts.includeCancelled` (an editor
+ *    that shows a called-off date struck through, with its undo).
  * 4. Return sorted ascending by startTime.
  *
  * No slot is written anywhere — this is a pure read operation.
@@ -27,7 +28,8 @@ type DateRange = { start: Date; end: Date };
 export function generateSlots(
 	offering: Offering,
 	existingSlots: Slot[],
-	range: DateRange
+	range: DateRange,
+	opts: { includeCancelled?: boolean } = {},
 ): Slot[] {
 	// Build an index of existing persisted slots keyed by their canonical key.
 	// Key: `${scheduleRuleId}:${startTime.toISOString()}` for generated slots,
@@ -57,7 +59,7 @@ export function generateSlots(
 			if (persistedByKey.has(key)) {
 				// Use the persisted slot (may be cancelled, full, etc.)
 				const persisted = persistedByKey.get(key)!;
-				if (persisted.status !== 'cancelled') {
+				if (persisted.status !== 'cancelled' || opts.includeCancelled) {
 					result.push(persisted);
 				}
 				// Mark as consumed so it's not added again from existingSlots below.
